@@ -1,0 +1,56 @@
+---
+- &base
+  sample_id: 42
+  submission_timestamp: '2019-01-01 17:19:39.844336 UTC'
+  environment:
+    {
+      "system": {
+        "os": {
+          "name": "Windows_NT",
+          "version": "10.0",
+          "windows_build_number": "17763.0",
+          "windows_ubr": "805.0"
+        }
+      }
+    }
+- *base
+- <<: *base
+  environment:
+    {
+      "system": {
+        "os": {
+          "name": "Windows_NT",
+          "version": "10.1",
+          "windows_build_number": "17763.0",
+          "windows_ubr": "805.0"
+        }
+      }
+    }
+- <<: *base
+  environment:
+    {
+      "system": {
+        "os": {
+          "name": "Windows_NT",
+          "version": "10.1",
+          "windows_build_number": "19763.0",
+          "windows_ubr": "805.0"
+        }
+      }
+    }
+- <<: *base
+  environment:
+    {
+      "system": {
+        "os": {
+          "name": "Not_Windows_NT",
+          "version": "10.1",
+          "windows_build_number": "19763.0",
+          "windows_ubr": "805.0"
+        }
+      }
+    }
+- <<: *base
+  sample_id: 1
+- <<: *base
+  submission_timestamp: '2019-01-02 17:19:39.844336 UTC'

@@ -13,10 +13,10 @@ into BigQuery, such as with main_summary_v4.
 */
 
 CREATE TEMP FUNCTION
-  udf_aggregate_active_addons(active_addons ANY TYPE) AS (STRUCT(ARRAY(
+  udf_aggregate_active_addons(active_addons ANY TYPE) AS (ARRAY(
       SELECT
-        STRUCT(udf_json_mode_last(ARRAY_AGG(element)) AS element)
+        STRUCT(key, STRUCT(udf_json_mode_last(ARRAY_AGG(value)) AS value))
       FROM
         UNNEST(active_addons)
       GROUP BY
-        element.addon_id) AS list));
+        key));

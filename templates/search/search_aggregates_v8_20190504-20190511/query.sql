@@ -23,4 +23,5 @@ SELECT
 FROM
   `moz-fx-data-derived-datasets.search.search_aggregates_v6`
 WHERE
-  submission_date_s3 >= '2019-05-04' AND submission_date_s3 <= '2019-05-11'
+  submission_date_s3 >= '2019-05-04'
+  AND submission_date_s3 <= '2019-05-11'

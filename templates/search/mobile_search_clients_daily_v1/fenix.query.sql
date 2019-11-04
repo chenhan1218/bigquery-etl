@@ -1,3 +1,7 @@
+CREATE TEMP FUNCTION normalize_search_key(key STRING) AS ((
+  SELECT IF(ARRAY_LENGTH(SPLIT(key, '_')) = 2, REPLACE(key, '_', '.'), key)
+));
+
 SELECT
   EXTRACT(DATE FROM submission_timestamp) AS submission_date,
   client_info.client_id,

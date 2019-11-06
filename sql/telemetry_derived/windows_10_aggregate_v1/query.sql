@@ -40,5 +40,5 @@ FROM
 WHERE
   DATE(submission_timestamp) = @submission_date
   AND environment.system.os.name = 'Windows_NT'
-  AND STARTS_WITH(environment.system.os.version, '10')
+  AND STARTS_WITH(CAST(environment.system.os.version as STRING), '10')
   AND sample_id=42;

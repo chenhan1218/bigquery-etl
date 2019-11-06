@@ -114,6 +114,34 @@ main_ping_agg AS (
     DATE(submission_timestamp) = '2019-11-04' -- TODO: USE param
     AND is_valid_build_id(environment.build.build_id)
 ),
+core_ping_agg AS (
+  SELECT
+    DATE(submission_timestamp) AS submission_date,
+    udf_round_timestamp_to_minute(submission_timestamp, 5) AS window_start,
+    normalized_channel AS channel,
+    environment.build.version,
+    application.display_version,
+    environment.build.build_id,
+    metadata.uri.app_name,
+    environment.system.os.name AS os,
+    environment.system.os.version AS os_version,
+    environment.build.architecture,
+    normalized_country_code AS country,
+    -- 0 columns to match crash ping
+    0 AS main_crash,
+    0 AS content_crash,
+    0 AS startup_crash,
+    0 AS content_shutdown_crash,
+    LEAST(GREATEST(payload.info.subsession_length / 3600, 0), 25) AS usage_hours,
+    0 AS gpu_crashes,
+    0 AS plugin_crashes,
+    0 AS gmplugin_crashes
+  FROM
+    `moz-fx-data-shared-prod.telemetry_live.main_v4`
+  WHERE
+    DATE(submission_timestamp) = '2019-11-04' -- TODO: USE param
+    AND is_valid_build_id(environment.build.build_id)
+),
 combined_crashes AS (
   SELECT
     *
@@ -124,6 +152,11 @@ combined_crashes AS (
     *
   FROM
     main_ping_agg
+  UNION ALL
+  SELECT
+    *
+  FROM
+    core_ping_agg
 )
 
 SELECT

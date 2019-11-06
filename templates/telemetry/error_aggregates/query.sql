@@ -1,5 +1,15 @@
+-- Return true if build is from 6 months ago or less
+CREATE TEMP FUNCTION is_valid_build_id(build_id STRING) AS (
+  DATE_DIFF(
+    CURRENT_DATE(),
+    PARSE_DATE('%Y%m%d', SUBSTR(build_id, 0, 8)),
+    MONTH
+  ) <= 6
+);
+
 WITH crash_ping_agg AS (
   SELECT
+    DATE(submission_timestamp) AS submission_date,
     udf_round_timestamp_to_minute(submission_timestamp, 5) AS window_start,
     normalized_channel AS channel,
     environment.build.version,
@@ -36,14 +46,11 @@ WITH crash_ping_agg AS (
     `moz-fx-data-shared-prod.telemetry_live.crash_v4`
   WHERE
     DATE(submission_timestamp) = "2019-11-04" -- TODO: replace with parameter
-    AND DATE_DIFF(
-      CURRENT_DATE(),
-      PARSE_DATE('%Y%m%d', SUBSTR(environment.build.build_id, 0, 8)),
-      MONTH
-    ) <= 6
+    AND is_valid_build_id(environment.build.build_id)
 ),
 main_ping_agg AS (
   SELECT
+    DATE(submission_timestamp) AS submission_date,
     udf_round_timestamp_to_minute(submission_timestamp, 5) AS window_start,
     normalized_channel AS channel,
     environment.build.version,
@@ -67,11 +74,7 @@ main_ping_agg AS (
     `moz-fx-data-shared-prod.telemetry_live.main_v4`
   WHERE
     DATE(submission_timestamp) = '2019-11-04' -- TODO: USE param
-    AND DATE_DIFF(
-      CURRENT_DATE(),
-      PARSE_DATE('%Y%m%d', SUBSTR(environment.build.build_id, 0, 8)),
-      MONTH
-    ) <= 6
+    AND is_valid_build_id(environment.build.build_id)
 ),
 combined_crashes AS (
   SELECT
@@ -103,7 +106,7 @@ SELECT
   SUM(content_shutdown_crash) AS content_shutdown_crashes,
   SUM(gpu_crashes) AS gpu_crashes,
   SUM(plugin_crashes) AS plugin_crashes,
-  SUM(gmplugin_crashes) as gmplugin_crashes,
+  SUM(gmplugin_crashes) AS gmplugin_crashes,
   SUM(usage_hours) AS usage_hours
 FROM
   combined_crashes

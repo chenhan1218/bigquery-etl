@@ -41,6 +41,11 @@ FROM
   `moz-fx-data-shared-prod.telemetry_live.crash_v4`
 WHERE
   DATE(submission_timestamp) = "2019-11-04" -- TODO: replace with parameter
+  AND DATE_DIFF(
+    CURRENT_DATE(),
+    PARSE_DATE('%Y%m%d', SUBSTR(application.build_id, 0, 8)),
+    MONTH
+  ) <= 6
 GROUP BY
   window_start,
   normalized_channel,

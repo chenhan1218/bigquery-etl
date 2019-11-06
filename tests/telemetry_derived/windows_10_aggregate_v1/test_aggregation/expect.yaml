@@ -1,11 +1,11 @@
 ---
 - &base
-  version: 10.0
-  build_number: 17763.0
-  ubr: 805.0
-  build_group: 1809
+  version: "10.0"
+  build_number: "17763.0"
+  ubr: "805.0"
+  build_group: "1809"
 - <<: *base
 - <<: *base
-  version: 10.1
+  version: "10.1"
 - <<: *base
   build_group: Insider

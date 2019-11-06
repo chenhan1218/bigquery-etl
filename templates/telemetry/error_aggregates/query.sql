@@ -10,7 +10,6 @@ SELECT
   normalized_os_version AS os_version,
   application.architecture,
   normalized_country_code AS country,
-  COUNT(*) AS count,
   SUM(
     IF(
       payload.process_type = 'main'

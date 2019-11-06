@@ -1,3 +1,35 @@
+CREATE TEMP FUNCTION
+  udf_json_extract_int_map (input STRING) AS (ARRAY(
+    SELECT
+      STRUCT(CAST(SPLIT(entry, ':')[OFFSET(0)] AS INT64) AS key,
+             CAST(SPLIT(entry, ':')[OFFSET(1)] AS INT64) AS value)
+    FROM
+      UNNEST(SPLIT(REPLACE(TRIM(input, '{}'), '"', ''), ',')) AS entry
+    WHERE
+      LENGTH(entry) > 0 ));
+CREATE TEMP FUNCTION
+  udf_json_extract_histogram (input STRING) AS (STRUCT(
+    CAST(JSON_EXTRACT_SCALAR(input, '$.bucket_count') AS INT64) AS bucket_count,
+    CAST(JSON_EXTRACT_SCALAR(input, '$.histogram_type') AS INT64) AS histogram_type,
+    CAST(JSON_EXTRACT_SCALAR(input, '$.sum') AS INT64) AS `sum`,
+    ARRAY(
+      SELECT
+        CAST(bound AS INT64)
+      FROM
+        UNNEST(SPLIT(TRIM(JSON_EXTRACT(input, '$.range'), '[]'), ',')) AS bound) AS `range`,
+    udf_json_extract_int_map(JSON_EXTRACT(input, '$.values')) AS `values` ));
+CREATE TEMP FUNCTION udf_histogram_get_sum(histogram_list ANY TYPE, target_key STRING) AS (
+  (
+    SELECT
+      udf_json_extract_histogram(value).sum
+    FROM
+      UNNEST(histogram_list)
+    WHERE
+      key = target_key
+    LIMIT
+      1
+  )
+);
 CREATE TEMP FUNCTION udf_round_timestamp_to_minute(timestamp_expression TIMESTAMP, minute INT64) AS (
   TIMESTAMP_SECONDS(
     CAST((FLOOR(UNIX_SECONDS(timestamp_expression) / (minute * 60)) * minute * 60) AS INT64)
@@ -10,10 +42,10 @@ WITH crash_ping_agg AS (
     normalized_channel AS channel,
     environment.build.version,
     application.display_version,
-    application.build_id,
-    normalized_app_name AS app_name,
-    normalized_os AS os,
-    normalized_os_version AS os_version,
+    environment.build.build_id,
+    metadata.uri.app_name,
+    environment.system.os.name AS os,
+    environment.system.os.version AS os_version,
     application.architecture,
     normalized_country_code AS country,
     IF(
@@ -44,7 +76,7 @@ WITH crash_ping_agg AS (
     DATE(submission_timestamp) = "2019-11-04" -- TODO: replace with parameter
     AND DATE_DIFF(
       CURRENT_DATE(),
-      PARSE_DATE('%Y%m%d', SUBSTR(application.build_id, 0, 8)),
+      PARSE_DATE('%Y%m%d', SUBSTR(environment.build.build_id, 0, 8)),
       MONTH
     ) <= 6
 ),
@@ -54,10 +86,10 @@ main_ping_agg AS (
     normalized_channel AS channel,
     environment.build.version,
     application.display_version,
-    application.build_id,
-    normalized_app_name AS app_name,
-    normalized_os AS os,
-    normalized_os_version AS os_version,
+    environment.build.build_id,
+    metadata.uri.app_name,
+    environment.system.os.name AS os,
+    environment.system.os.version AS os_version,
     application.architecture,
     normalized_country_code AS country,
     -- 0 columns to match crash ping
@@ -66,13 +98,18 @@ main_ping_agg AS (
     0 AS startup_crash,
     0 AS content_shutdown_crash,
     LEAST(GREATEST(payload.info.subsession_length / 3600, 0), 25) AS usage_hours,
-    COALESCE(get_histogram_sum(payload.keyed_histograms.subprocess_crashes_with_dump, 'gpu'), 0) AS gpu_crashes,
-    COALESCE(get_histogram_sum(payload.keyed_histograms.subprocess_crashes_with_dump, 'plugin'), 0) AS plugin_crashes,
-    COALESCE(get_histogram_sum(payload.keyed_histograms.subprocess_crashes_with_dump, 'gmplugin'), 0) AS gmplugin_crashes
+    COALESCE(udf_histogram_get_sum(payload.keyed_histograms.subprocess_crashes_with_dump, 'gpu'), 0) AS gpu_crashes,
+    COALESCE(udf_histogram_get_sum(payload.keyed_histograms.subprocess_crashes_with_dump, 'plugin'), 0) AS plugin_crashes,
+    COALESCE(udf_histogram_get_sum(payload.keyed_histograms.subprocess_crashes_with_dump, 'gmplugin'), 0) AS gmplugin_crashes
   FROM
     `moz-fx-data-shared-prod.telemetry_live.main_v4`
   WHERE
     DATE(submission_timestamp) = '2019-11-04' -- TODO: USE param
+    AND DATE_DIFF(
+      CURRENT_DATE(),
+      PARSE_DATE('%Y%m%d', SUBSTR(environment.build.build_id, 0, 8)),
+      MONTH
+    ) <= 6
 ),
 combined_crashes AS (
   SELECT

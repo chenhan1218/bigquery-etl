@@ -4,10 +4,10 @@ WITH crash_ping_agg AS (
     normalized_channel AS channel,
     environment.build.version,
     application.display_version,
-    application.build_id,
-    normalized_app_name AS app_name,
-    normalized_os AS os,
-    normalized_os_version AS os_version,
+    environment.build.build_id,
+    metadata.uri.app_name,
+    environment.system.os.name AS os,
+    environment.system.os.version AS os_version,
     application.architecture,
     normalized_country_code AS country,
     IF(
@@ -38,7 +38,7 @@ WITH crash_ping_agg AS (
     DATE(submission_timestamp) = "2019-11-04" -- TODO: replace with parameter
     AND DATE_DIFF(
       CURRENT_DATE(),
-      PARSE_DATE('%Y%m%d', SUBSTR(application.build_id, 0, 8)),
+      PARSE_DATE('%Y%m%d', SUBSTR(environment.build.build_id, 0, 8)),
       MONTH
     ) <= 6
 ),
@@ -48,10 +48,10 @@ main_ping_agg AS (
     normalized_channel AS channel,
     environment.build.version,
     application.display_version,
-    application.build_id,
-    normalized_app_name AS app_name,
-    normalized_os AS os,
-    normalized_os_version AS os_version,
+    environment.build.build_id,
+    metadata.uri.app_name,
+    environment.system.os.name AS os,
+    environment.system.os.version AS os_version,
     application.architecture,
     normalized_country_code AS country,
     -- 0 columns to match crash ping
@@ -60,13 +60,18 @@ main_ping_agg AS (
     0 AS startup_crash,
     0 AS content_shutdown_crash,
     LEAST(GREATEST(payload.info.subsession_length / 3600, 0), 25) AS usage_hours,
-    COALESCE(get_histogram_sum(payload.keyed_histograms.subprocess_crashes_with_dump, 'gpu'), 0) AS gpu_crashes,
-    COALESCE(get_histogram_sum(payload.keyed_histograms.subprocess_crashes_with_dump, 'plugin'), 0) AS plugin_crashes,
-    COALESCE(get_histogram_sum(payload.keyed_histograms.subprocess_crashes_with_dump, 'gmplugin'), 0) AS gmplugin_crashes
+    COALESCE(udf_histogram_get_sum(payload.keyed_histograms.subprocess_crashes_with_dump, 'gpu'), 0) AS gpu_crashes,
+    COALESCE(udf_histogram_get_sum(payload.keyed_histograms.subprocess_crashes_with_dump, 'plugin'), 0) AS plugin_crashes,
+    COALESCE(udf_histogram_get_sum(payload.keyed_histograms.subprocess_crashes_with_dump, 'gmplugin'), 0) AS gmplugin_crashes
   FROM
     `moz-fx-data-shared-prod.telemetry_live.main_v4`
   WHERE
     DATE(submission_timestamp) = '2019-11-04' -- TODO: USE param
+    AND DATE_DIFF(
+      CURRENT_DATE(),
+      PARSE_DATE('%Y%m%d', SUBSTR(environment.build.build_id, 0, 8)),
+      MONTH
+    ) <= 6
 ),
 combined_crashes AS (
   SELECT

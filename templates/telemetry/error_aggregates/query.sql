@@ -8,7 +8,7 @@ WITH crash_ping_agg AS (
     metadata.uri.app_name,
     environment.system.os.name AS os,
     environment.system.os.version AS os_version,
-    application.architecture,
+    environment.build.architecture,
     normalized_country_code AS country,
     IF(
       payload.process_type = 'main'
@@ -52,7 +52,7 @@ main_ping_agg AS (
     metadata.uri.app_name,
     environment.system.os.name AS os,
     environment.system.os.version AS os_version,
-    application.architecture,
+    environment.build.architecture,
     normalized_country_code AS country,
     -- 0 columns to match crash ping
     0 AS main_crash,

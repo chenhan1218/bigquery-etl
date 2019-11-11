@@ -1,0 +1,16 @@
+Browser
+feature: launch_app
+tags: launch_app_from_launcher
+feature: pre_search
+feature: search
+partner: true
+tags: keyword_search
+source: google
+feature: remove_tab
+feature: change_tab
+feature: give_feedback
+feature: visit_topsite
+feature: browse
+tags: launch_app_from_external
+feature: add_tab
+feature: private_mode

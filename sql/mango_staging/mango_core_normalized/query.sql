@@ -1,0 +1,6 @@
+SELECT
+  *
+FROM
+  `taipei-bi.mango_staging.mango_core_normalized`
+WHERE
+  submission_date = @submission_date
